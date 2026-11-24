@@ -114,6 +114,13 @@ label.f{display:grid;gap:4px;font-size:13px;color:var(--mu);font-weight:500}
 .maq .tin span{color:#fff;font-weight:700}
 .tira{display:grid;place-items:center;width:40px;height:40px;border-radius:10px;color:var(--peligro);background:#fff;border:1.5px solid #e8c4bc;flex:none}
 .tira:active{background:#fbe9e5}
+/* papelera de los días */
+.dia-fila{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:stretch}
+.dia-fila .tira{height:auto;width:54px;align-self:stretch}
+.dia-fila .tira svg{width:26px;height:26px}
+.dia-fila .tira.armado{width:88px;background:var(--peligro);border-color:var(--peligro);color:#fff;font-size:13px;font-weight:700;line-height:1.15;padding:4px}
+.btn.borrar-dia{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--peligro);border-color:#e8c4bc;background:#fff}
+.btn.borrar-dia.armado{color:#fff;background:var(--peligro);border-color:var(--peligro)}
 .maq .tira{position:absolute;right:6px;top:6px;width:32px;height:32px;border-radius:8px;border:0;background:rgba(255,255,255,.92)}
 .maq.on .nm{padding-right:38px;min-height:32px}
 .pers .p .step{margin-left:auto}
@@ -609,7 +616,8 @@ function vistaObra() {
     const nm = FILAS_MAQ.filter(r => d.v[r] != null).length;
     const tt = FILAS_MEZCLA.reduce((s, r) => s + numSuelto(d.v[r]), 0);
     const partes = [`${np} pers. · ${fmt(hp)} h`, `${nm} máq.`]; if (tt) partes.push(`${fmt(tt)} t`); if (numSuelto(d.m2mbc)) partes.push(`${fmtMiles(numSuelto(d.m2mbc))} m²`);
-    return `<button class="item" data-a="abrirDia" data-f="${f}"><span class="n">Día ${i + 1} · ${fLarga(f)}</span><span class="d">${partes.join(" · ")} · <span class="estado ${d.guardado ? "ok" : "pend"}">${d.guardado ? "Guardado ✓" : "Sin guardar"}</span></span><span class="flecha">›</span></button>`;
+    const armado = ui.armado === "borrarDia" + f;
+    return `<div class="dia-fila"><button class="item" data-a="abrirDia" data-f="${f}"><span class="n">Día ${i + 1} · ${fLarga(f)}</span><span class="d">${partes.join(" · ")} · <span class="estado ${d.guardado ? "ok" : "pend"}">${d.guardado ? "Guardado ✓" : "Sin guardar"}</span></span><span class="flecha">›</span></button><button class="tira ${armado ? "armado" : ""}" data-a="borrarDiaLista" data-f="${f}" aria-label="Borrar el día ${fLarga(f)}">${armado ? "¿Borrar?<br>Pulsa otra vez" : ICONO_PAPELERA}</button></div>`;
   };
   const arm = k => ui.armado === k;
   return `<main>
@@ -619,7 +627,7 @@ function vistaObra() {
     <div class="${espRaro(t.esp) ? "mal" : ""}"><b>${t.esp == null ? "—" : fmt(t.esp, 1)}</b><span>cm espesor medio</span></div></div>
     ${espRaro(t.esp) ? `<p class="nota" style="color:var(--aviso)">El espesor medio sale raro. Revisa las toneladas y los m².</p>` : ""}
   </section>
-  <section class="card"><h2>Días de trabajo <small>toca uno para verlo o corregirlo</small></h2>
+  <section class="card"><h2>Días de trabajo <small>toca uno para verlo o corregirlo; la papelera lo borra</small></h2>
     ${fs.length ? `<div class="lista">${fs.map(itemDia).join("")}</div>` : `<p class="nota">Todavía no hay días. Añade el primero.</p>`}
     <div class="fila2" style="align-items:end"><label class="f">Fecha del día<input type="date" id="fNueva" value="${dSig}"></label><button class="go" data-a="anadirDia">+ Añadir día</button></div>
   </section>
@@ -687,7 +695,8 @@ function vistaDia() {
   <section class="card"><h2>Observaciones del día</h2>
     <textarea data-in="obs" rows="3" placeholder="Incidencias, averías, lo que haya que saber">${h(d.obs)}</textarea>
   </section>
-  <button class="peligro-lnk" data-a="borrarDia">${arm("borrarDia") ? "¿Borrar este día? Pulsa otra vez" : "Borrar este día"}</button>
+  <button class="btn borrar-dia ${arm("borrarDia") ? "armado" : ""}" data-a="borrarDia">${ICONO_PAPELERA}<span>${arm("borrarDia") ? "¿Borrar este día? Pulsa otra vez" : "Borrar este día"}</span></button>
+  <p class="nota" style="margin-top:-8px">Si te equivocas, el día va a la papelera y se puede recuperar.</p>
   </main>
   <div class="pie"><div class="in"><span class="msg ${ui.msgTipo || ""}" id="msg">${h(ui.msg || (d.guardado ? "Día guardado. Si cambias algo, vuelve a guardar." : "Rellena el día y pulsa guardar."))}</span><button class="go" data-a="guardarDia">Guardar día</button></div></div>`;
 }
@@ -800,7 +809,7 @@ function tocado(o, d) { if (d) d.guardado = false; o.mod = Date.now(); guardar()
 document.addEventListener("click", async e => {
   const b = e.target.closest("[data-a]"); if (!b) return;
   const a = b.dataset.a;
-  if (ui.armado && !["salir", "reabrir", "cerrar", "borrarObra", "ayer", "borrarDia", "borrarSel"].includes(a)) { ui.armado = null; }
+  if (ui.armado && !["salir", "reabrir", "cerrar", "borrarObra", "ayer", "borrarDia", "borrarDiaLista", "borrarSel"].includes(a)) { ui.armado = null; }
   const o = obraAct(), d = diaAct();
   switch (a) {
     case "tecla": {
@@ -885,6 +894,16 @@ document.addEventListener("click", async e => {
       aPapelera(item); delete o.dias[d.fecha]; tocado(o); encolar("guardar", o, `Borra el día ${fCorta(item.dia.fecha)}`); ui.vista = "obra"; pintar();
       toast(`Día ${fLarga(item.dia.fecha)} borrado. Está en la papelera.`, () => recuperar(S.papelera.find(x => x.dia === item.dia) ? S.papelera.find(x => x.dia === item.dia).id : null));
     } return;
+    case "borrarDiaLista": {
+      // Papelera de la lista de días: primer toque pide confirmación, el segundo lo manda a la papelera (con «Deshacer»).
+      const f = b.dataset.f, dd = o && o.dias[f];
+      if (!dd || !armar("borrarDia" + f)) return;
+      aPapelera({ tipo: "dia", obraId: o.id, obraNombre: o.obra, dia: JSON.parse(JSON.stringify(dd)) });
+      const pid = S.papelera[0].id;
+      delete o.dias[f]; tocado(o); encolar("guardar", o, `Borra el día ${fCorta(f)}`); pintar();
+      toast(`Día ${fLarga(f)} borrado. Está en la papelera.`, () => recuperar(pid));
+      return;
+    }
     case "guardarDia": {
       const sinT = Object.keys(d.v).filter(f => ITEM[f].u === "t" && !numSuelto(d.v[f]));
       if (sinT.length) { ui.msg = `Faltan las toneladas de ${ITEM[sinT[0]].n}.`; ui.msgTipo = "mal"; return pintar(); }
